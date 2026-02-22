@@ -1,3 +1,8 @@
 -r requirements.txt
 pytest>=8.0
 httpx>=0.27
+# torch and torchvision are needed only to run src/export_onnx.py locally
+# (they are NOT used at inference time — onnxruntime handles that)
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu

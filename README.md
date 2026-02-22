@@ -26,34 +26,40 @@ Deployed to the shared **LiteInfraStack** AWS ECS Fargate cluster. Infrastructur
 **Prerequisites:** Python 3.10, pip
 
 ```bash
-# 1. Install dependencies
+# 1. Install dependencies (includes onnxruntime)
 pip install -r requirements.txt
 
-# 2. Start the server
+# 2. Export the model to ONNX (one-time step — requires torch locally)
+pip install torch==2.2.2+cpu torchvision==0.17.2+cpu \
+    --extra-index-url https://download.pytorch.org/whl/cpu
+python src/export_onnx.py
+# → produces models/resnet18.onnx and models/labels.json
+
+# 3. Start the server
 uvicorn app:app --reload
 
-# 3. Open the dashboard
+# 4. Open the dashboard
 open http://127.0.0.1:8000/dashboard
 
-# 4. Or test the API directly
+# 5. Or test the API directly
 curl -X POST -F "file=@test.jpg" http://127.0.0.1:8000/predict
 ```
 
-The app defaults to the pretrained ImageNet ResNet-18. To use the CIFAR-10 fine-tuned model, run `python src/train_finetune.py` first — it saves weights to `models/resnet18_finetuned.pth`, which the classifier picks up automatically on next start.
+The inference runtime is **onnxruntime** — PyTorch is only needed to run the one-time export script (`src/export_onnx.py`). The export defaults to the pretrained ImageNet ResNet-18. To use a CIFAR-10 fine-tuned model, run `python src/train_finetune.py` first, then re-run `python src/export_onnx.py` — it detects `models/resnet18_finetuned.pth` automatically.
 
 ---
 
 ## Run the Test Suite
 
 ```bash
-# Install dev dependencies (pytest + httpx — does not require PyTorch model weights)
+# Install dev dependencies (pytest + httpx + torch for export script)
 pip install -r requirements-dev.txt
 
 # Run all tests
 pytest tests/ -v
 ```
 
-Tests mock the VisionClassifier so the full PyTorch model is never loaded during CI. All 21 tests should pass in under 30 seconds.
+Tests mock the VisionClassifier so no ONNX model file is needed. All 21 tests pass in under 5 seconds.
 
 ---
 

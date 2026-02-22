@@ -21,10 +21,11 @@ venv/
 # 🧩 Data / Models
 # --------------------------
 data/
-models/
 checkpoints/
 *.pth
 training_history.json
+# models/*.onnx and models/*.json are intentionally allowed —
+# they are small exported artifacts needed in the build context.
 
 # --------------------------
 # 🧾 Logs / Caches
