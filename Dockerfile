@@ -9,6 +9,8 @@ FROM python:3.10-slim AS exporter
 WORKDIR /export
 
 RUN pip install --no-cache-dir \
+    "numpy<2" \
+    onnx \
     torch==2.2.2+cpu \
     torchvision==0.17.2+cpu \
     --extra-index-url https://download.pytorch.org/whl/cpu
