@@ -123,7 +123,7 @@ All AWS infrastructure is defined in the **lite-infra** repository using AWS CDK
 
 | Item | Status | Notes |
 |------|--------|-------|
-| ECR repository output key | Assumed `BackendEcrUri` | Verify this matches the actual CloudFormation output key in `lite-infra` |
+| ECR repository output key | `VisionSenseEcrUri` | Confirmed CloudFormation output key in `lite-infra` |
 | Health check path | `GET /` on port 80 | App's root route returns `200 OK` — no changes needed in lite-infra |
 | Container name in task definition | `app` | deploy.sh targets this name in the jq transform |
 | Container port | `80` | Dockerfile now runs Uvicorn on port 80 |

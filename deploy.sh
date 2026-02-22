@@ -54,7 +54,7 @@ get_output() {
 
 CLUSTER_NAME=$(get_output "EcsClusterName")
 SERVICE_NAME=$(get_output "EcsServiceName")
-APP_ECR_URI=$(get_output "BackendEcrUri")
+APP_ECR_URI=$(get_output "VisionSenseEcrUri")
 ALB_DNS=$(get_output "AlbDnsName")
 
 echo "  Cluster:  ${CLUSTER_NAME}"
