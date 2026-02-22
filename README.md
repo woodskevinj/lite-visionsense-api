@@ -1,290 +1,156 @@
----
-# 🖼️ Vision Sense API & Dashboard
+# lite-visionsense-api
 
-VisionSense is a complete end-to-end image classification system built using **FastAPI**, **PyTorch**, and **TailwindCSS**.
+A lightweight, containerized image-classification microservice built with **FastAPI** and **PyTorch**. Uses a pretrained ResNet-18 (ImageNet) with optional fine-tuned CIFAR-10 weights, served via Uvicorn on port 80. Includes a Tailwind-powered web dashboard for interactive predictions.
 
-It includes both a REST API **and** a modern web dashboard for uploading images and viewing predictions.
-
-This project demonstrates the applied ML engineer workflow.
-
-- model selection → fine-tuning → API serving → UI → containerization → deployment.
----
-
-## 🧩 Project Overview
-
-VisionSense API provides:
-
-✅ /predict API endpoint for image classification
-
-✅ Tailwind-powered web dashboard at /dashboard
-
-✅ Real-time top-5 predictions with confidence scores
-
-✅ Optional fine-tuned model (CIFAR-10)
-
-✅ Full logging + health checks
-
-✅ Dockerized microservice ready for AWS deployment
+Deployed to the shared **LiteInfraStack** AWS ECS Fargate cluster. Infrastructure is managed separately in [lite-infra](https://github.com/woodskevinj/lite-infra).
 
 ---
 
-## ⚙️ Tech Stack
+## API Endpoints
 
-| Component            | Purpose                               |
-| -------------------- | ------------------------------------- |
-| **FastAPI**          | REST API + HTML template rendering    |
-| **PyTorch**          | Model loading + inference             |
-| **TorchVision**      | Pretrained ResNet18 + transforms      |
-| **TailwindCSS**      | Front-end styling for dashboard UI    |
-| **Uvicorn**          | ASGI server for FastAPI               |
-| **Docker**           | Containerized deployment              |
-| **Python-Multipart** | File upload handling                  |
-| **Optional**         | AWS ECS / App Runner deployment later |
-
----
-
-## 📂 Project Structure
-
-```css
-visionsense-api/
-├── app.py
-├── src/
-│   ├── classifier.py
-│   └── train_finetune.py
-├── templates/
-│   └── index.html          # Dashboard UI
-├── static/
-│   └── (optional CSS, images)
-├── requirements.txt
-├── Dockerfile
-├── .dockerignore
-└── .gitignore
-
-```
+| Route        | Method | Description                              |
+|--------------|--------|------------------------------------------|
+| `/`          | GET    | Welcome message                          |
+| `/dashboard` | GET    | Web dashboard for uploading images       |
+| `/predict`   | POST   | Upload image → top-5 label + confidence  |
+| `/health`    | GET    | Model/API health check                   |
+| `/info`      | GET    | Service metadata (version, model, etc.)  |
+| `/logs`      | GET    | Recent prediction log entries            |
+| `/docs`      | GET    | Swagger UI                               |
+| `/redoc`     | GET    | ReDoc UI                                 |
 
 ---
 
-## 🚀 Getting Started
+## Run Locally
+
+**Prerequisites:** Python 3.10, pip
 
 ```bash
-# 1️⃣ Clone the repository
-git clone https://github.com/woodskevinj/visionsense-api.git
-cd visionsense-api
-```
-
-# 2️⃣ Install dependencies
-
-```bash
+# 1. Install dependencies
 pip install -r requirements.txt
-```
 
-# 3️⃣ Run the FastAPI app
+# 2. Start the server
+uvicorn app:app --reload
 
-```bash
-uvicorn api.app:app --reload
-```
+# 3. Open the dashboard
+open http://127.0.0.1:8000/dashboard
 
-# 4️⃣ Visit the dashboard
-
-👉 http://127.0.0.1:8000/dashboard
-
-Upload an image and see predictions instantly.
-
-# 5️⃣ Test the API directly
-
-```bash
+# 4. Or test the API directly
 curl -X POST -F "file=@test.jpg" http://127.0.0.1:8000/predict
 ```
 
-Expected JSON response:
-
-```json
-{
-  "success": true,
-  "results": [
-    { "label": "dog", "confidence": 0.9853 },
-    { "label": "cat", "confidence": 0.0094 },
-    { "label": "frog", "confidence": 0.0021 },
-    { "label": "deer", "confidence": 0.0013 },
-    { "label": "horse", "confidence": 0.0011 }
-  ]
-}
-```
+The app defaults to the pretrained ImageNet ResNet-18. To use the CIFAR-10 fine-tuned model, run `python src/train_finetune.py` first — it saves weights to `models/resnet18_finetuned.pth`, which the classifier picks up automatically on next start.
 
 ---
 
-## 🌐 API Endpoints
-
-| Endpoint   | Method | Description                                            |
-| ---------- | ------ | ------------------------------------------------------ |
-| /dashboard | GET    | HTML dashboard UI for uploading and classifying images |
-| /predict   | POST   | Upload image → get top-5 predictions                   |
-| /health    | GET    | Model/API health check (device, model loaded, status)  |
-| /info      | GET    | Model + service metadata                               |
-| /logs      | GET    | Returns recent prediction logs                         |
-| /          | GET    | Welcome message                                        |
-
-Swagger UI: http://127.0.0.1:8000/docs
-
-ReDoc UI: http://127.0.0.1:8000/redoc
-
----
-
-## 🧠 Model Options
-
-# ✅ Default
-
-ResNet-18 pretrained on ImageNet (torchvision.models).
-
-# ✅ Fine-Tuned Model Support
-
-If models/resnet18_finetuned.pth exists, the classifier automatically switches to CIFAR-10 labels:
-
-```text
-airplane, automobile, bird, cat, deer,
-dog, frog, horse, ship, truck
-```
-
-Fine-tuning script:
+## Run the Test Suite
 
 ```bash
-python src/train_finetune.py
+# Install dev dependencies (pytest + httpx — does not require PyTorch model weights)
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest tests/ -v
 ```
+
+Tests mock the VisionClassifier so the full PyTorch model is never loaded during CI. All 21 tests should pass in under 30 seconds.
 
 ---
 
-## 🐳 Docker Usage
-
-Build Docker Image
+## Docker
 
 ```bash
-docker build -t visionsense-api .
+# Build (port 80)
+docker build -t lite-visionsense-api .
+
+# Run locally on port 8080 (maps host 8080 → container 80)
+docker run -p 8080:80 lite-visionsense-api
+
+# Verify
+curl http://localhost:8080/health
 ```
 
-Run Container
+---
+
+## Deploy to AWS ECS Fargate
+
+### Prerequisites
+
+| Tool | Purpose |
+|------|---------|
+| [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) | Interact with AWS |
+| [Docker](https://docs.docker.com/get-docker/) | Build and push images |
+| [jq](https://jqlang.github.io/jq/) | Parse CloudFormation output JSON |
+| Valid AWS credentials | `aws configure` or `AWS_PROFILE` env var |
+
+The deploy script reads **all** resource names (cluster, service, ECR URI, ALB DNS) from the `LiteInfraStack` CloudFormation outputs at runtime. No hardcoded ARNs or account IDs.
+
+### Deploy
 
 ```bash
-docker run -p 8000:8000 visionsense-api
+./deploy.sh
 ```
 
-Verify
+What it does:
+
+1. Checks all prerequisites (aws, docker, jq, credentials, Docker daemon)
+2. Queries `LiteInfraStack` CloudFormation outputs for cluster name, service name, ECR URI, and ALB DNS
+3. Authenticates Docker with ECR
+4. Builds the image for `linux/amd64` and pushes to ECR as `:latest`
+5. Fetches the current ECS task definition from the running service
+6. Replaces the `app` container image in the task definition JSON using `jq`
+7. Registers a new task definition revision
+8. Updates the ECS service with `--force-new-deployment`
+9. Prints the ALB URL and a monitoring command
+
+When complete, the app is accessible at the printed ALB DNS name on port 80.
+
+### Stop (scale to zero)
 
 ```bash
-docker ps
+./teardown.sh
 ```
 
-- Example
+Scales the ECS service desired count to 0 and waits for all tasks to fully drain. This stops all running containers and eliminates compute charges. AWS infrastructure (VPC, ECR, ALB) remains intact and is managed in `lite-infra`.
 
-```nginx
-CONTAINER ID   IMAGE              COMMAND                  STATUS         PORTS                    NAMES
-xxxxxx         visionsense-api   "uvicorn app:app --h…"   Up 5 seconds   0.0.0.0:8000->8000/tcp   visionsense
+---
+
+## Infrastructure
+
+All AWS infrastructure is defined in the **lite-infra** repository using AWS CDK. This repo only contains application code and deployment scripts. To fully tear down infrastructure, run `cdk destroy` in `lite-infra`.
+
+### Flags / Dependencies on lite-infra
+
+| Item | Status | Notes |
+|------|--------|-------|
+| ECR repository output key | Assumed `BackendEcrUri` | Verify this matches the actual CloudFormation output key in `lite-infra` |
+| Health check path | `GET /` on port 80 | App's root route returns `200 OK` — no changes needed in lite-infra |
+| Container name in task definition | `app` | deploy.sh targets this name in the jq transform |
+| Container port | `80` | Dockerfile now runs Uvicorn on port 80 |
+
+---
+
+## Project Structure
 
 ```
-
-Then open:
-
-👉 http://127.0.0.1:8000/dashboard
-
----
-
-## ☁️ AWS ECR Deployment & Cleanup
-
-<details>
-<summary><b>Push Container to AWS ECR</b></summary>
-
-```bash
-# 1️⃣ Create repository (only once)
-aws ecr create-repository --repository-name visionsense-api --region us-east-1
-
-# 2️⃣ Authenticate Docker to ECR
-aws ecr get-login-password --region us-east-1 \
-  | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com
-
-# 3️⃣ Tag image
-docker tag visionsense-api:latest <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/visionsense-api:latest
-
-# 4️⃣ Push to ECR
-docker push <aws_account_id>.dkr.ecr.us-east-1.amazonaws.com/visionsense-api:latest
+lite-visionsense-api/
+├── app.py                  # FastAPI application and routes
+├── src/
+│   ├── classifier.py       # VisionClassifier (ResNet-18 inference)
+│   └── train_finetune.py   # CIFAR-10 fine-tuning script
+├── templates/
+│   └── index.html          # Dashboard UI (Jinja2 + TailwindCSS)
+├── static/
+│   └── style.css
+├── tests/
+│   └── test_app.py         # Full route + error-handling test suite
+├── requirements.txt        # Production dependencies
+├── requirements-dev.txt    # Test dependencies (pytest, httpx)
+├── Dockerfile              # Container definition (port 80)
+├── deploy.sh               # Build, push, and deploy to ECS Fargate
+└── teardown.sh             # Scale ECS service to zero
 ```
 
-</details>
-
 ---
 
-<details>
-<summary><b>Clean Up Resources to Avoid Charges</b></summary>
-
-```bash
-# 🧹 Delete image from ECR
-aws ecr batch-delete-image \
-  --repository-name visionsense-api \
-  --image-ids imageTag=latest \
-  --region us-east-1
-
-# 🧼 Remove local image
-docker rmi visionsense-api
-
-# 🧾 Optional: Delete repository (only if no longer needed)
-aws ecr delete-repository \
-  --repository-name visionsense-api \
-  --region us-east-1 \
-  --force
-```
-
-✅ Note: Keeping an empty repository incurs **no cost**.
-
-</details>
-
----
-
-## 📊 Current Progress
-
-| Phase                              | Status      |
-| ---------------------------------- | ----------- |
-| **Pretrained ResNet18 Inference**  | ✅ Done     |
-| **FastAPI Backend API**            | ✅ Done     |
-| **Dashboard UI (Tailwind + HTML)** | ✅ Done     |
-| **Logging + Health Endpoints**     | ✅ Done     |
-| **CIFAR-10 Fine-Tuning Pipeline**  | ✅ Done     |
-| **Dockerization**                  | ✅ Done     |
-| **AWS Deployment(ECR/ECS)**        | 🔜 Upcoming |
-
----
-
-## 🔁 Transfer Learning (Fine-Tuning)
-
-Fine-tuning adapts the pretrained ResNet-18 (ImageNet) to a new, smaller dataset such as CIFAR-10.
-
-**Steps performed in** `src/train_finetune.py`:
-
-1. Freeze pretrained layers and replace the final fully connected layer (`fc`).
-
-2. Train on CIFAR-10 (10 classes).
-
-3. Save weights to `models/resnet18_finetuned.pth`.
-
-4. The API automatically detects and loads the fine-tuned model if present.
-
----
-
-## ☁️ Deployment Notes
-
-- Image builds ~1 GB with default PyTorch
-
-- Can shrink using CPU-only wheels (torch==x.x.x+cpu)
-
-- Works cleanly on ECS, App Runner, or EC2
-
----
-
-👨‍💻 Author
-
-# Kevin Woods
-
-Applied ML Engineer
-
-AWS Certified AI Practitioner
-
-AWS Machine Learning Certified Engineer – Associate
-
-- 🔗 [GitHub: woodskevinj](https://github.com/woodskevinj)
+Author: Kevin Woods — Applied ML Engineer | AWS Certified AI Practitioner | AWS ML Engineer Associate

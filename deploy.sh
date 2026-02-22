@@ -54,18 +54,16 @@ get_output() {
 
 CLUSTER_NAME=$(get_output "EcsClusterName")
 SERVICE_NAME=$(get_output "EcsServiceName")
-FRONTEND_ECR_URI=$(get_output "FrontendEcrUri")
-BACKEND_ECR_URI=$(get_output "BackendEcrUri")
+APP_ECR_URI=$(get_output "BackendEcrUri")
 ALB_DNS=$(get_output "AlbDnsName")
 
-echo "  Cluster:      ${CLUSTER_NAME}"
-echo "  Service:      ${SERVICE_NAME}"
-echo "  Frontend ECR: ${FRONTEND_ECR_URI}"
-echo "  Backend ECR:  ${BACKEND_ECR_URI}"
-echo "  ALB DNS:      ${ALB_DNS}"
+echo "  Cluster:  ${CLUSTER_NAME}"
+echo "  Service:  ${SERVICE_NAME}"
+echo "  ECR URI:  ${APP_ECR_URI}"
+echo "  ALB DNS:  ${ALB_DNS}"
 
-# Derive the ECR registry host from the frontend URI (strip /repo-name)
-ECR_REGISTRY="${FRONTEND_ECR_URI%%/*}"
+# Derive the ECR registry host from the app URI (strip /repo-name)
+ECR_REGISTRY="${APP_ECR_URI%%/*}"
 
 echo ""
 echo "=== Logging in to ECR ==="
@@ -73,14 +71,9 @@ aws ecr get-login-password \
   | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
 echo ""
-echo "=== Building and pushing frontend ==="
-docker build -t "${FRONTEND_ECR_URI}:latest" ./frontend
-docker push "${FRONTEND_ECR_URI}:latest"
-
-echo ""
-echo "=== Building and pushing backend ==="
-docker build -t "${BACKEND_ECR_URI}:latest" ./backend
-docker push "${BACKEND_ECR_URI}:latest"
+echo "=== Building and pushing image ==="
+docker build --platform linux/amd64 -t "${APP_ECR_URI}:latest" .
+docker push "${APP_ECR_URI}:latest"
 
 echo ""
 echo "=== Registering new task definition revision ==="
@@ -95,14 +88,14 @@ CURRENT_TASK_DEF_ARN=$(aws ecs describe-services \
 echo "  Current task definition: ${CURRENT_TASK_DEF_ARN}"
 
 # Fetch the current task definition and transform it:
-#   - Replace the app container image with the ECR frontend URI
+#   - Replace the app container image with the new ECR image
 #   - Strip fields that cannot be included when re-registering
 TASK_DEF_JSON=$(aws ecs describe-task-definition \
   --task-definition "$CURRENT_TASK_DEF_ARN" \
   --query "taskDefinition")
 
 NEW_TASK_DEF=$(echo "$TASK_DEF_JSON" | jq \
-  --arg app_image "${FRONTEND_ECR_URI}:latest" \
+  --arg app_image "${APP_ECR_URI}:latest" \
   '
   .containerDefinitions |= map(
     if .name == "app" then .image = $app_image | del(.command)
