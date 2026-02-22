@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>VisionSense Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-gray-100 min-h-screen py-10">
+    <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
+        VisionSense Image Classifier
+      </h1>
+
+      <!-- Upload Form -->
+      <form id="uploadForm" class="space-y-4" enctype="multipart/form-data">
+        <input
+          id="fileInput"
+          type="file"
+          name="file"
+          accept="image/*"
+          class="block w-full border border-gray-300 rounded-lg p-3"
+          required
+        />
+
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition"
+        >
+          Classify Image
+        </button>
+      </form>
+
+      <!-- Image Preview -->
+      <div id="previewContainer" class="mt-6 hidden">
+        <h2 class="font-semibold text-gray-700 mb-2">Image Preview</h2>
+        <img id="preview" class="rounded-lg shadow-md max-h-64 mx-auto" />
+      </div>
+
+      <!-- Results -->
+      <div id="results" class="mt-8 hidden">
+        <h2 class="text-xl font-semibold mb-3">Predictions</h2>
+        <ul id="resultsList" class="space-y-2"></ul>
+      </div>
+    </div>
+
+    <script>
+      // Image preview
+      const fileInput = document.getElementById("fileInput");
+      const preview = document.getElementById("preview");
+      const previewContainer = document.getElementById("previewContainer");
+
+      fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        preview.src = URL.createObjectURL(file);
+        previewContainer.classList.remove("hidden");
+      });
+
+      // Upload + prediction
+      const form = document.getElementById("uploadForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/predict", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+        const resultsDiv = document.getElementById("results");
+        const resultsList = document.getElementById("resultsList");
+
+        resultsList.innerHTML = "";
+        resultsDiv.classList.remove("hidden");
+
+        data.result.forEach((r) => {
+          const li = document.createElement("li");
+          li.className = "p-3 bg-gray-50 rounded-lg shadow-sm";
+          li.innerHTML = `<strong>${r.label}</strong> — ${r.confidence}`;
+          resultsList.appendChild(li);
+        });
+      });
+    </script>
+  </body>
+</html>

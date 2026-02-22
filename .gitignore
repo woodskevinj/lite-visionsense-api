@@ -1,0 +1,65 @@
+# -----------------------
+# Python / PyTorch
+# -----------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.DS_Store
+
+# -----------------------
+# Virtual Environments
+# -----------------------
+venv/
+.env/
+.venv/
+
+# -----------------------
+# Jupyter Checkpoints
+# -----------------------
+.ipynb_checkpoints/
+
+# -----------------------
+# Logs / Caches
+# -----------------------
+logs/
+*.log
+*.tmp
+.cache/
+.history
+
+# -----------------------
+# Data / Models
+# -----------------------
+data/
+models/
+checkpoints/
+*.pth
+training_history.json
+
+# -----------------------
+# Docker / Build Files
+# -----------------------
+Dockerfile~
+.dockerignore~
+*.tar
+*.bak
+*.swp
+build/
+dist/
+
+# -----------------------
+# Git / Editors
+# -----------------------
+.git/
+.idea/
+.vscode/
+
+# -----------------------
+# Dashboard Assets
+# -----------------------
+# (We WANT templates/ and static/ to be included)
+# So no ignore rules here!

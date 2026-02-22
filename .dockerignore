@@ -1,0 +1,54 @@
+# --------------------------
+# 🧠 Python / Environment
+# --------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+*.so
+.DS_Store
+
+# --------------------------
+# 🧰 Virtual Environments
+# --------------------------
+venv/
+.env/
+.venv/
+
+# --------------------------
+# 🧩 Data / Models
+# --------------------------
+data/
+models/
+checkpoints/
+*.pth
+training_history.json
+
+# --------------------------
+# 🧾 Logs / Caches
+# --------------------------
+logs/
+*.log
+*.tmp
+.cache/
+.history
+
+# --------------------------
+# 🧱 Build & Docker Files
+# --------------------------
+Dockerfile~
+*.tar
+*.bak
+*.swp
+build/
+dist/
+
+# --------------------------
+# ⚙️ Git & IDE
+# --------------------------
+.git/
+.gitignore
+.idea/
+.vscode/
