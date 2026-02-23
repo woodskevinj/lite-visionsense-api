@@ -53,7 +53,7 @@ get_output() {
 }
 
 CLUSTER_NAME=$(get_output "EcsClusterName")
-SERVICE_NAME=$(get_output "EcsServiceName")
+SERVICE_NAME=$(get_output "VisionSenseEcsServiceName")
 APP_ECR_URI=$(get_output "VisionSenseEcrUri")
 ALB_DNS=$(get_output "AlbDnsName")
 
