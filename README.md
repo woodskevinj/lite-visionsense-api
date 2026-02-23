@@ -1,8 +1,8 @@
 # lite-visionsense-api
 
-A lightweight, containerized image-classification microservice built with **FastAPI** and **PyTorch**. Uses a pretrained ResNet-18 (ImageNet) with optional fine-tuned CIFAR-10 weights, served via Uvicorn on port 80. Includes a Tailwind-powered web dashboard for interactive predictions.
+A lightweight, containerized image-classification microservice built with **FastAPI** and **ONNX Runtime**. Uses a pretrained ResNet-18 (ImageNet) with optional fine-tuned CIFAR-10 weights, served via Uvicorn on port 80. Includes a Tailwind-powered web dashboard for interactive predictions.
 
-Deployed to the shared **LiteInfraStack** AWS ECS Fargate cluster. Infrastructure is managed separately in [lite-infra](https://github.com/woodskevinj/lite-infra).
+Deployed to the shared **LiteInfraStack** AWS ECS Fargate cluster on ALB port 8080. Infrastructure is managed separately in [lite-infra](https://github.com/woodskevinj/lite-infra).
 
 ---
 
@@ -59,7 +59,7 @@ pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
 
-Tests mock the VisionClassifier so no ONNX model file is needed. All 21 tests pass in under 5 seconds.
+Tests mock the VisionClassifier so no ONNX model file is needed. All 41 tests pass in under 5 seconds.
 
 ---
 
@@ -109,7 +109,7 @@ What it does:
 8. Updates the ECS service with `--force-new-deployment`
 9. Prints the ALB URL and a monitoring command
 
-When complete, the app is accessible at the printed ALB DNS name on port 80.
+When complete, the app is accessible at `http://<alb-dns>:8080`.
 
 ### Stop (scale to zero)
 
@@ -125,14 +125,16 @@ Scales the ECS service desired count to 0 and waits for all tasks to fully drain
 
 All AWS infrastructure is defined in the **lite-infra** repository using AWS CDK. This repo only contains application code and deployment scripts. To fully tear down infrastructure, run `cdk destroy` in `lite-infra`.
 
-### Flags / Dependencies on lite-infra
+This app runs on the shared LiteInfraStack ALB on **port 8080**. The lite-tasktracker app runs on port 80 of the same ALB. Both share the same ECS cluster and VPC.
 
-| Item | Status | Notes |
-|------|--------|-------|
-| ECR repository output key | `VisionSenseEcrUri` | Confirmed CloudFormation output key in `lite-infra` |
-| Health check path | `GET /` on port 80 | App's root route returns `200 OK` — no changes needed in lite-infra |
-| Container name in task definition | `app` | deploy.sh targets this name in the jq transform |
-| Container port | `80` | Dockerfile now runs Uvicorn on port 80 |
+### CloudFormation output keys used by deploy.sh
+
+| Output Key | Description |
+|---|---|
+| `EcsClusterName` | Shared ECS cluster |
+| `VisionSenseEcsServiceName` | Dedicated ECS service for this app |
+| `VisionSenseEcrUri` | ECR repository for this app's image |
+| `AlbDnsName` | Shared ALB DNS name (app is on port 8080) |
 
 ---
 
@@ -140,21 +142,23 @@ All AWS infrastructure is defined in the **lite-infra** repository using AWS CDK
 
 ```
 lite-visionsense-api/
-├── app.py                  # FastAPI application and routes
+├── app.py                      # FastAPI application and routes
 ├── src/
-│   ├── classifier.py       # VisionClassifier (ResNet-18 inference)
-│   └── train_finetune.py   # CIFAR-10 fine-tuning script
+│   ├── classifier.py           # VisionClassifier (ONNX Runtime inference)
+│   ├── export_onnx.py          # Exports ResNet-18 to ONNX (run once locally or at build time)
+│   └── train_finetune.py       # CIFAR-10 fine-tuning script (optional)
 ├── templates/
-│   └── index.html          # Dashboard UI (Jinja2 + TailwindCSS)
+│   └── index.html              # Dashboard UI (Jinja2 + TailwindCSS)
 ├── static/
 │   └── style.css
 ├── tests/
-│   └── test_app.py         # Full route + error-handling test suite
-├── requirements.txt        # Production dependencies
-├── requirements-dev.txt    # Test dependencies (pytest, httpx)
-├── Dockerfile              # Container definition (port 80)
-├── deploy.sh               # Build, push, and deploy to ECS Fargate
-└── teardown.sh             # Scale ECS service to zero
+│   ├── test_app.py             # API route and error-handling tests
+│   └── test_classifier.py      # VisionClassifier unit tests (preprocessing, predict logic)
+├── requirements.txt            # Production dependencies (onnxruntime, no torch)
+├── requirements-dev.txt        # Dev/test dependencies (pytest, httpx, torch for export)
+├── Dockerfile                  # Multi-stage build: ONNX export + slim runtime image
+├── deploy.sh                   # Build, push, and deploy to ECS Fargate
+└── teardown.sh                 # Scale ECS service to zero
 ```
 
 ---
