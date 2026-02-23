@@ -126,5 +126,5 @@ aws ecs update-service \
 echo ""
 echo "=== Deployment triggered successfully ==="
 echo "Task definition: ${NEW_TASK_DEF_ARN}"
-echo "Application URL: http://${ALB_DNS}"
+echo "Application URL: http://${ALB_DNS}:8080"
 echo "Monitor with:    aws ecs describe-services --cluster ${CLUSTER_NAME} --services ${SERVICE_NAME} --query 'services[0].deployments'"
